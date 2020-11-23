@@ -1,0 +1,6 @@
+dao\UsersDao.class
+services\UsersService.class
+dao\UsersDaoImpl.class
+services\UsersServiceImpl.class
+controllers\UsersController.class
+model\User.class

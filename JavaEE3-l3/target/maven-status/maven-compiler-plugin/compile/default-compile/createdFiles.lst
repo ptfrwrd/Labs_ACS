@@ -1,0 +1,8 @@
+dao\UsersDaoImpl.class
+services\UsersServiceImpl.class
+dao\UsersDao.class
+services\UsersService.class
+controllers\RestController.class
+model\UsersXML.class
+controllers\UsersController.class
+model\User.class
