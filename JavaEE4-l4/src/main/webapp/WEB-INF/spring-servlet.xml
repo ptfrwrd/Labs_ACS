@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/mvc"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:beans="http://www.springframework.org/schema/beans"
+             xmlns:context="http://www.springframework.org/schema/context"
+             xmlns:tx="http://www.springframework.org/schema/tx"
+             xmlns:jms="http://www.springframework.org/schema/jms"
+             xsi:schemaLocation="
+             http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+		     http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		     http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+		     http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+		     http://www.springframework.org/schema/jms https://www.springframework.org/schema/jms/spring-jms-4.3.xsd">
+
+    <annotation-driven/>
+
+    <!-- Enables the Spring MVC @Controller programming model -->
+    <context:component-scan base-package="controllers"/>
+
+    <beans:bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <beans:property name="prefix" value="/WEB-INF/jsp/"/>
+        <beans:property name="suffix" value=".jsp"/>
+    </beans:bean>
+
+    <beans:bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <beans:property name="driverClassName" value="org.postgresql.Driver"/>
+        <beans:property name="url" value="jdbc:postgresql://localhost:5432/postgres"/>
+        <beans:property name="username" value="postgres"/>
+        <beans:property name="password" value="admin"/>
+    </beans:bean>
+
+    <beans:bean id="hibernate4AnnotatedSessionFactory"
+                class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+        <beans:property name="dataSource" ref="dataSource"/>
+        <beans:property name="annotatedClasses">
+            <beans:list>
+                <beans:value>model.User</beans:value>
+                <beans:value>model.Product</beans:value>
+                <beans:value>model.Order</beans:value>
+                <beans:value>model.TableUpdate</beans:value>
+                <beans:value>model.EmailNotificationsRule</beans:value>
+            </beans:list>
+        </beans:property>
+        <beans:property name="hibernateProperties">
+            <beans:props>
+                <beans:prop key="hibernate.dialect">org.hibernate.dialect.PostgreSQL82Dialect</beans:prop>
+                <beans:prop key="hibernate.show_sql">true</beans:prop>
+                <beans:prop key="hibernate.hbm2ddl.auto">none"</beans:prop>
+                <beans:prop key="hibernate.transaction.jta.platform">
+                    org.hibernate.service.jta.platform.internal.SunOneJtaPlatform
+                </beans:prop>
+            </beans:props>
+        </beans:property>
+    </beans:bean>
+
+    <beans:bean id="usersDao" class="dao.UsersDaoImpl">
+        <beans:property name="sessionFactory" ref="hibernate4AnnotatedSessionFactory"/>
+    </beans:bean>
+    <beans:bean id="usersService" class="services.UsersServiceImpl">
+        <beans:property name="usersDao" ref="usersDao"/>
+    </beans:bean>
+
+    <beans:bean id="productsDao" class="dao.ProductsDaoImpl">
+        <beans:property name="sessionFactory" ref="hibernate4AnnotatedSessionFactory"/>
+    </beans:bean>
+    <beans:bean id="productsService" class="services.ProductsServiceImpl">
+        <beans:property name="productsDao" ref="productsDao"/>
+    </beans:bean>
+
+    <beans:bean id="ordersDao" class="dao.OrdersDaoImpl">
+        <beans:property name="sessionFactory" ref="hibernate4AnnotatedSessionFactory"/>
+    </beans:bean>
+    <beans:bean id="ordersService" class="services.OrdersServiceImpl">
+        <beans:property name="ordersDao" ref="ordersDao"/>
+    </beans:bean>
+
+    <beans:bean id="tableUpdatesDao" class="dao.TableUpdatesDaoImpl">
+        <beans:property name="sessionFactory" ref="hibernate4AnnotatedSessionFactory"/>
+    </beans:bean>
+    <beans:bean id="tableUpdatesService" class="services.TableUpdatesServiceImpl">
+        <beans:property name="tableUpdatesDao" ref="tableUpdatesDao"/>
+    </beans:bean>
+
+    <beans:bean id="emailNotificationsRulesDao" class="dao.EmailNotificationsRulesDaoImpl">
+        <beans:property name="sessionFactory" ref="hibernate4AnnotatedSessionFactory"/>
+    </beans:bean>
+    <beans:bean id="emailNotificationsRulesService" class="services.EmailNotificationsRulesServiceImpl">
+        <beans:property name="emailNotificationsRulesDao" ref="emailNotificationsRulesDao"/>
+    </beans:bean>
+
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+    <beans:bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+        <beans:property name="sessionFactory" ref="hibernate4AnnotatedSessionFactory"/>
+    </beans:bean>
+
+    <jms:annotation-driven/>
+
+    <beans:bean id="amqConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+        <beans:property name="brokerURL" value="tcp://localhost:61616"/>
+    </beans:bean>
+
+    <beans:bean id="connectionFactory" class="org.springframework.jms.connection.CachingConnectionFactory">
+        <beans:property name="targetConnectionFactory" ref="amqConnectionFactory"/>
+    </beans:bean>
+
+    <beans:bean id="jacksonJmsMessageConverter"
+                class="org.springframework.jms.support.converter.MappingJackson2MessageConverter">
+        <beans:property name="typeIdPropertyName" value="_type"/>
+    </beans:bean>
+
+    <beans:bean id="jmsContainerFactory" class="org.springframework.jms.config.DefaultJmsListenerContainerFactory">
+        <beans:property name="connectionFactory" ref="connectionFactory"/>
+        <beans:property name="messageConverter" ref="jacksonJmsMessageConverter"/>
+        <beans:property name="pubSubDomain" value="true"/>
+    </beans:bean>
+
+    <beans:bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+        <beans:property name="connectionFactory" ref="connectionFactory"/>
+        <beans:property name="messageConverter" ref="jacksonJmsMessageConverter"/>
+        <beans:property name="pubSubDomain" value="true"/>
+    </beans:bean>
+
+    <beans:bean id="tableUpdatesMessageReceiver" class="controllers.TableUpdatesMessageReceiver"/>
+    <beans:bean id="emailMessageReceiver" class="controllers.EmailMessageReceiver"/>
+</beans:beans>
